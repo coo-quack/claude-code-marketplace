@@ -26,9 +26,9 @@ jobs:
           git fetch origin develop
           DIFF=$(git log origin/develop..origin/main --oneline)
           if [ -n "$DIFF" ]; then
-            echo "needed=true" >> $GITHUB_OUTPUT
+            echo "needed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "needed=false" >> $GITHUB_OUTPUT
+            echo "needed=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Create backport branch
@@ -36,20 +36,20 @@ jobs:
         id: branch
         run: |
           BRANCH="backport/pr-${{ github.event.pull_request.number }}-to-develop"
-          git checkout -b $BRANCH origin/develop
+          git checkout -b "$BRANCH" origin/develop
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           if git merge origin/main --no-edit; then
-            echo "conflict=false" >> $GITHUB_OUTPUT
+            echo "conflict=false" >> "$GITHUB_OUTPUT"
           else
-            echo "conflict=true" >> $GITHUB_OUTPUT
+            echo "conflict=true" >> "$GITHUB_OUTPUT"
             git merge --abort
             git merge origin/main --no-edit -s ours
           fi
 
-          git push origin $BRANCH
-          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          git push origin "$BRANCH"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
 
       - name: Create backport PR
         if: steps.check.outputs.needed == 'true'
@@ -66,7 +66,7 @@ jobs:
             --title "chore: backport #${{ github.event.pull_request.number }} to develop" \
             --body "$(echo -e "$BODY")" \
             --base develop \
-            --head ${{ steps.branch.outputs.branch }})
+            --head "${{ steps.branch.outputs.branch }}")
 
           if [ "${{ steps.branch.outputs.conflict }}" != "true" ]; then
             gh pr merge "$PR_URL" --auto --merge || gh pr merge "$PR_URL" --merge

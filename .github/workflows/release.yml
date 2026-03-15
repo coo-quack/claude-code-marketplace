@@ -6,6 +6,10 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -21,7 +25,9 @@ jobs:
         run: |
           VERSION=$(node -p "require('./.claude-plugin/marketplace.json').metadata.version")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          if [ "$VERSION" = "undefined" ]; then
+          if [ -z "$VERSION" ] || [ "$VERSION" = "undefined" ] || [ "$VERSION" = "null" ]; then
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          elif ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then
             echo "should_release=false" >> "$GITHUB_OUTPUT"
           elif git ls-remote --tags origin "v$VERSION" | grep -q "v$VERSION"; then
             echo "should_release=false" >> "$GITHUB_OUTPUT"
@@ -53,8 +59,7 @@ jobs:
         run: |
           VERSION="v${{ needs.check.outputs.version }}"
           PLUGINS=$(node -p "require('./.claude-plugin/marketplace.json').plugins.map(p => '- **' + p.name + '** v' + p.version).join('\n')")
+          NOTES=$(printf '## Plugins\n\n%s' "$PLUGINS")
           gh release create "$VERSION" \
             --title "$VERSION" \
-            --notes "## Plugins
-
-          $PLUGINS"
+            --notes "$NOTES"
