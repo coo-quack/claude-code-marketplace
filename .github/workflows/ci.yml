@@ -39,4 +39,6 @@ jobs:
           "
 
       - name: Validate version is a valid git ref
-        run: git check-ref-format "refs/tags/v$(node -p "require('./.claude-plugin/marketplace.json').metadata.version")"
+        run: |
+          VERSION=$(node -p "require('./.claude-plugin/marketplace.json').metadata.version")
+          git check-ref-format "refs/tags/v$VERSION"
