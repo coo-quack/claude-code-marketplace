@@ -56,14 +56,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+
           if [ "${{ steps.branch.outputs.conflict }}" = "true" ]; then
-            BODY="Automated backport of #${{ github.event.pull_request.number }} to \`develop\`.\n\n⚠️ **Merge conflict detected.** The branch was created with \`-s ours\` to allow PR creation. You must manually resolve the conflicts before merging."
+            BODY="Automated backport of #${PR_NUMBER} to \`develop\`.\n\n⚠️ **Merge conflict detected.** The branch was created with \`-s ours\` to allow PR creation. You must manually resolve the conflicts before merging."
           else
-            BODY="Automated backport of #${{ github.event.pull_request.number }} **${{ github.event.pull_request.title }}** to \`develop\`."
+            BODY="Automated backport of #${PR_NUMBER} to \`develop\`."
           fi
 
           PR_URL=$(gh pr create \
-            --title "chore: backport #${{ github.event.pull_request.number }} to develop" \
+            --title "chore: backport #${PR_NUMBER} to develop" \
             --body "$(echo -e "$BODY")" \
             --base develop \
             --head "${{ steps.branch.outputs.branch }}")
