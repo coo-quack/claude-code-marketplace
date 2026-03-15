@@ -28,6 +28,16 @@ jobs:
             exit 1
           fi
 
+          if ! echo "$PLUGIN_NAME" | grep -qE '^[a-z0-9-]+$'; then
+            echo "Invalid plugin name: $PLUGIN_NAME"
+            exit 1
+          fi
+
+          if ! echo "$PLUGIN_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?(\+[a-zA-Z0-9.]+)?$'; then
+            echo "Invalid version: $PLUGIN_VERSION"
+            exit 1
+          fi
+
           echo "plugin=$PLUGIN_NAME" >> "$GITHUB_OUTPUT"
           echo "version=$PLUGIN_VERSION" >> "$GITHUB_OUTPUT"
 
