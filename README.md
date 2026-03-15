@@ -1,6 +1,6 @@
 # Claude Code Marketplace by COO Quack!
 
-Claude Code plugin marketplace for coo-quack.
+A handy plugin for Claude Code. Give it a try!
 
 ## Usage
 
