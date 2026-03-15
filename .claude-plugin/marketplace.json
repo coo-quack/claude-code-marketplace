@@ -4,7 +4,8 @@
     "name": "coo-quack"
   },
   "metadata": {
-    "description": "Claude Code plugins by coo-quack"
+    "description": "Claude Code plugins by coo-quack",
+    "version": "1.0.0"
   },
   "plugins": [
     {

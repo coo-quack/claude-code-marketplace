@@ -1,0 +1,78 @@
+name: Backport to develop
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  backport:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if backport is needed
+        id: check
+        run: |
+          git fetch origin develop main
+          DIFF=$(git log origin/develop..origin/main --oneline)
+          if [ -n "$DIFF" ]; then
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create backport branch
+        if: steps.check.outputs.needed == 'true'
+        id: branch
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          BRANCH="backport/pr-${PR_NUMBER}-to-develop"
+          git checkout -b "$BRANCH" origin/develop
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git merge origin/main --no-edit; then
+            echo "conflict=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "conflict=true" >> "$GITHUB_OUTPUT"
+            git merge --abort
+            git merge origin/main --no-edit -s ours
+          fi
+
+          git push origin "$BRANCH"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Create backport PR
+        if: steps.check.outputs.needed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          CONFLICT: ${{ steps.branch.outputs.conflict }}
+          BRANCH: ${{ steps.branch.outputs.branch }}
+        run: |
+          if [ "$CONFLICT" = "true" ]; then
+            BODY="Automated backport of #${PR_NUMBER} to \`develop\`.\n\n⚠️ **Merge conflict detected.** The branch was created with \`-s ours\` to allow PR creation. You must manually resolve the conflicts before merging."
+          else
+            BODY="Automated backport of #${PR_NUMBER} to \`develop\`."
+          fi
+
+          PR_URL=$(gh pr create \
+            --title "chore: backport #${PR_NUMBER} to develop" \
+            --body "$(echo -e "$BODY")" \
+            --base develop \
+            --head "$BRANCH")
+
+          if [ "$CONFLICT" != "true" ]; then
+            gh pr merge "$PR_URL" --auto --merge || gh pr merge "$PR_URL" --merge
+          fi

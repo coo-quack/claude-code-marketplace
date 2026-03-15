@@ -1,0 +1,92 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - id: check
+        run: |
+          VERSION=$(node -p "require('./.claude-plugin/marketplace.json').metadata?.version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [ -z "$VERSION" ] || [ "$VERSION" = "undefined" ] || [ "$VERSION" = "null" ]; then
+            echo "Skipping: missing or invalid metadata.version ($VERSION)"
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          elif ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$'; then
+            echo "Skipping: version is not valid semver ($VERSION)"
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          elif ! git check-ref-format "refs/tags/v$VERSION"; then
+            echo "Skipping: version is not a valid git ref ($VERSION)"
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          elif git ls-remote --tags --refs origin "refs/tags/v$VERSION" | grep -q .; then
+            echo "Skipping: tag v$VERSION already exists"
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Will release v$VERSION"
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  release:
+    needs: check
+    if: needs.check.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Create git tag
+        env:
+          VERSION: v${{ needs.check.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --tags --refs origin "refs/tags/$VERSION" | grep -q .; then
+            echo "Tag $VERSION already exists, skipping"
+          else
+            git tag "$VERSION"
+            git push origin "$VERSION"
+          fi
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: v${{ needs.check.outputs.version }}
+        run: |
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            echo "Release $VERSION already exists, skipping"
+          else
+            node -e '
+              const m = require("./.claude-plugin/marketplace.json");
+              const lines = m.plugins.map(p => "- **" + p.name + "** v" + p.version);
+              require("fs").writeFileSync("/tmp/release-notes.md", "## Plugins\n\n" + lines.join("\n") + "\n");
+            '
+            gh release create "$VERSION" \
+              --title "$VERSION" \
+              --notes-file /tmp/release-notes.md
+          fi

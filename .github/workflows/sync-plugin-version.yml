@@ -1,0 +1,102 @@
+name: Sync plugin version
+
+on:
+  repository_dispatch:
+    types: [plugin-released]
+
+permissions: {}
+
+concurrency:
+  group: sync-plugin-version
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Update plugin version
+        id: update
+        env:
+          PLUGIN_NAME: ${{ github.event.client_payload.plugin }}
+          PLUGIN_VERSION: ${{ github.event.client_payload.version }}
+        run: |
+          if [ -z "$PLUGIN_NAME" ] || [ -z "$PLUGIN_VERSION" ]; then
+            echo "Missing plugin name or version in payload"
+            exit 1
+          fi
+
+          if ! echo "$PLUGIN_NAME" | grep -qE '^[a-z0-9-]+$'; then
+            echo "Invalid plugin name: $PLUGIN_NAME"
+            exit 1
+          fi
+
+          if ! echo "$PLUGIN_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$'; then
+            echo "Invalid version: $PLUGIN_VERSION"
+            exit 1
+          fi
+
+          if ! git check-ref-format "refs/tags/v$PLUGIN_VERSION"; then
+            echo "Version not valid as git ref: $PLUGIN_VERSION"
+            exit 1
+          fi
+
+          echo "plugin=$PLUGIN_NAME" >> "$GITHUB_OUTPUT"
+          echo "version=$PLUGIN_VERSION" >> "$GITHUB_OUTPUT"
+
+          node -e '
+            const fs = require("fs");
+            const name = process.env.PLUGIN_NAME;
+            const version = process.env.PLUGIN_VERSION;
+            const path = ".claude-plugin/marketplace.json";
+            const m = JSON.parse(fs.readFileSync(path, "utf8"));
+            const plugin = m.plugins.find(p => p.name === name);
+            if (!plugin) { console.error("Plugin not found: " + name); process.exit(1); }
+            if (plugin.version === version) { console.log("Already up to date"); process.exit(0); }
+            plugin.version = version;
+            fs.writeFileSync(path, JSON.stringify(m, null, 2) + "\n");
+            console.log("Updated " + name + " to " + version);
+          '
+
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create PR
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PLUGIN: ${{ steps.update.outputs.plugin }}
+          VERSION: ${{ steps.update.outputs.version }}
+        run: |
+          BRANCH="chore/sync-${PLUGIN}-v${VERSION}-${GITHUB_RUN_ID}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add .claude-plugin/marketplace.json
+          git commit -m "chore: sync ${PLUGIN} to v${VERSION}"
+          git push origin "$BRANCH"
+
+          PR_URL=$(gh pr create \
+            --title "chore: sync ${PLUGIN} to v${VERSION}" \
+            --body "Automated version sync triggered by [${PLUGIN} v${VERSION}](https://github.com/coo-quack/${PLUGIN}/releases/tag/v${VERSION})." \
+            --base develop \
+            --head "$BRANCH")
+
+          gh pr merge "$PR_URL" --auto --merge || gh pr merge "$PR_URL" --merge
