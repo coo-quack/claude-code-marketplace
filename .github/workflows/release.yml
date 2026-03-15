@@ -30,14 +30,19 @@ jobs:
           VERSION=$(node -p "require('./.claude-plugin/marketplace.json').metadata?.version")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           if [ -z "$VERSION" ] || [ "$VERSION" = "undefined" ] || [ "$VERSION" = "null" ]; then
+            echo "Skipping: missing or invalid metadata.version ($VERSION)"
             echo "should_release=false" >> "$GITHUB_OUTPUT"
           elif ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$'; then
+            echo "Skipping: version is not valid semver ($VERSION)"
             echo "should_release=false" >> "$GITHUB_OUTPUT"
           elif ! git check-ref-format "refs/tags/v$VERSION"; then
+            echo "Skipping: version is not a valid git ref ($VERSION)"
             echo "should_release=false" >> "$GITHUB_OUTPUT"
           elif git ls-remote --tags --refs origin "refs/tags/v$VERSION" | grep -q .; then
+            echo "Skipping: tag v$VERSION already exists"
             echo "should_release=false" >> "$GITHUB_OUTPUT"
           else
+            echo "Will release v$VERSION"
             echo "should_release=true" >> "$GITHUB_OUTPUT"
           fi
 
