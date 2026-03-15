@@ -33,6 +33,8 @@ jobs:
             echo "should_release=false" >> "$GITHUB_OUTPUT"
           elif ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$'; then
             echo "should_release=false" >> "$GITHUB_OUTPUT"
+          elif ! git check-ref-format "refs/tags/v$VERSION"; then
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
           elif git ls-remote --tags --refs origin "refs/tags/v$VERSION" | grep -q .; then
             echo "should_release=false" >> "$GITHUB_OUTPUT"
           else

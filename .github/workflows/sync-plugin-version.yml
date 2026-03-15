@@ -42,6 +42,11 @@ jobs:
             exit 1
           fi
 
+          if ! git check-ref-format "refs/tags/v$PLUGIN_VERSION"; then
+            echo "Version not valid as git ref: $PLUGIN_VERSION"
+            exit 1
+          fi
+
           echo "plugin=$PLUGIN_NAME" >> "$GITHUB_OUTPUT"
           echo "version=$PLUGIN_VERSION" >> "$GITHUB_OUTPUT"
 
