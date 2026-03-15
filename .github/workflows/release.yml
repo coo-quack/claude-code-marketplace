@@ -21,6 +21,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - id: check
         run: |
           VERSION=$(node -p "require('./.claude-plugin/marketplace.json').metadata?.version")
