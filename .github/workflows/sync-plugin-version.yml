@@ -1,0 +1,77 @@
+name: Sync plugin version
+
+on:
+  repository_dispatch:
+    types: [plugin-released]
+
+permissions: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+
+      - name: Update plugin version
+        id: update
+        run: |
+          PLUGIN_NAME="${{ github.event.client_payload.plugin }}"
+          PLUGIN_VERSION="${{ github.event.client_payload.version }}"
+
+          if [ -z "$PLUGIN_NAME" ] || [ -z "$PLUGIN_VERSION" ]; then
+            echo "Missing plugin name or version in payload"
+            exit 1
+          fi
+
+          echo "plugin=$PLUGIN_NAME" >> "$GITHUB_OUTPUT"
+          echo "version=$PLUGIN_VERSION" >> "$GITHUB_OUTPUT"
+
+          node -e "
+            const fs = require('fs');
+            const path = '.claude-plugin/marketplace.json';
+            const m = JSON.parse(fs.readFileSync(path, 'utf8'));
+            const plugin = m.plugins.find(p => p.name === '$PLUGIN_NAME');
+            if (!plugin) { console.error('Plugin not found: $PLUGIN_NAME'); process.exit(1); }
+            if (plugin.version === '$PLUGIN_VERSION') { console.log('Already up to date'); process.exit(0); }
+            plugin.version = '$PLUGIN_VERSION';
+            fs.writeFileSync(path, JSON.stringify(m, null, 2) + '\n');
+            console.log('Updated ' + '$PLUGIN_NAME' + ' to ' + '$PLUGIN_VERSION');
+          "
+
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create PR
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PLUGIN="${{ steps.update.outputs.plugin }}"
+          VERSION="${{ steps.update.outputs.version }}"
+          BRANCH="chore/sync-${PLUGIN}-v${VERSION}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add .claude-plugin/marketplace.json
+          git commit -m "chore: sync ${PLUGIN} to v${VERSION}"
+          git push origin "$BRANCH"
+
+          gh pr create \
+            --title "chore: sync ${PLUGIN} to v${VERSION}" \
+            --body "Automated version sync triggered by [${PLUGIN} v${VERSION}](https://github.com/coo-quack/${PLUGIN}/releases/tag/v${VERSION})." \
+            --base develop \
+            --head "$BRANCH"
+
+          gh pr merge "$BRANCH" --auto --merge || gh pr merge "$BRANCH" --merge
