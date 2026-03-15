@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: check
+        run: |
+          VERSION=$(node -p "require('./.claude-plugin/marketplace.json').metadata.version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [ "$VERSION" = "undefined" ]; then
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          elif git ls-remote --tags origin "v$VERSION" | grep -q "v$VERSION"; then
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  release:
+    needs: check
+    if: needs.check.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create git tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          VERSION="v${{ needs.check.outputs.version }}"
+          git tag "$VERSION"
+          git push origin "$VERSION"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="v${{ needs.check.outputs.version }}"
+          PLUGINS=$(node -p "require('./.claude-plugin/marketplace.json').plugins.map(p => '- **' + p.name + '** v' + p.version).join('\n')")
+          gh release create "$VERSION" \
+            --title "$VERSION" \
+            --notes "## Plugins
+
+          $PLUGINS"

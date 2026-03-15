@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate marketplace.json
+        run: |
+          node -e "
+            const m = require('./.claude-plugin/marketplace.json');
+            if (!m.name) throw new Error('missing name');
+            if (!m.plugins || !m.plugins.length) throw new Error('no plugins listed');
+            for (const p of m.plugins) {
+              if (!p.name) throw new Error('plugin missing name');
+              if (!p.source) throw new Error(p.name + ' missing source');
+              if (!p.version) throw new Error(p.name + ' missing version');
+            }
+            console.log('Valid: ' + m.plugins.length + ' plugins');
+          "
