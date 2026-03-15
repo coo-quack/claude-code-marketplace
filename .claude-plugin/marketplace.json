@@ -1,0 +1,33 @@
+{
+  "name": "coo-quack",
+  "owner": {
+    "name": "coo-quack"
+  },
+  "metadata": {
+    "description": "Claude Code plugins by coo-quack"
+  },
+  "plugins": [
+    {
+      "name": "sensitive-canary",
+      "source": {
+        "source": "github",
+        "repo": "coo-quack/sensitive-canary"
+      },
+      "description": "Blocks secrets and PII before they reach the Anthropic API",
+      "version": "0.4.6",
+      "license": "MIT",
+      "keywords": ["security", "secrets", "pii", "hooks"]
+    },
+    {
+      "name": "do-not-compact",
+      "source": {
+        "source": "github",
+        "repo": "coo-quack/do-not-compact"
+      },
+      "description": "Reloads CLAUDE.md files into context after conversation compaction",
+      "version": "1.0.0",
+      "license": "MIT",
+      "keywords": ["compaction", "claude-md", "context", "hooks"]
+    }
+  ]
+}
