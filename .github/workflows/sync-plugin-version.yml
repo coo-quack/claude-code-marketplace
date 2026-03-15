@@ -19,10 +19,10 @@ jobs:
 
       - name: Update plugin version
         id: update
+        env:
+          PLUGIN_NAME: ${{ github.event.client_payload.plugin }}
+          PLUGIN_VERSION: ${{ github.event.client_payload.version }}
         run: |
-          PLUGIN_NAME="${{ github.event.client_payload.plugin }}"
-          PLUGIN_VERSION="${{ github.event.client_payload.version }}"
-
           if [ -z "$PLUGIN_NAME" ] || [ -z "$PLUGIN_VERSION" ]; then
             echo "Missing plugin name or version in payload"
             exit 1
@@ -31,17 +31,19 @@ jobs:
           echo "plugin=$PLUGIN_NAME" >> "$GITHUB_OUTPUT"
           echo "version=$PLUGIN_VERSION" >> "$GITHUB_OUTPUT"
 
-          node -e "
-            const fs = require('fs');
-            const path = '.claude-plugin/marketplace.json';
-            const m = JSON.parse(fs.readFileSync(path, 'utf8'));
-            const plugin = m.plugins.find(p => p.name === '$PLUGIN_NAME');
-            if (!plugin) { console.error('Plugin not found: $PLUGIN_NAME'); process.exit(1); }
-            if (plugin.version === '$PLUGIN_VERSION') { console.log('Already up to date'); process.exit(0); }
-            plugin.version = '$PLUGIN_VERSION';
-            fs.writeFileSync(path, JSON.stringify(m, null, 2) + '\n');
-            console.log('Updated ' + '$PLUGIN_NAME' + ' to ' + '$PLUGIN_VERSION');
-          "
+          node -e '
+            const fs = require("fs");
+            const name = process.env.PLUGIN_NAME;
+            const version = process.env.PLUGIN_VERSION;
+            const path = ".claude-plugin/marketplace.json";
+            const m = JSON.parse(fs.readFileSync(path, "utf8"));
+            const plugin = m.plugins.find(p => p.name === name);
+            if (!plugin) { console.error("Plugin not found: " + name); process.exit(1); }
+            if (plugin.version === version) { console.log("Already up to date"); process.exit(0); }
+            plugin.version = version;
+            fs.writeFileSync(path, JSON.stringify(m, null, 2) + "\n");
+            console.log("Updated " + name + " to " + version);
+          '
 
       - name: Check for changes
         id: diff
@@ -59,7 +61,7 @@ jobs:
         run: |
           PLUGIN="${{ steps.update.outputs.plugin }}"
           VERSION="${{ steps.update.outputs.version }}"
-          BRANCH="chore/sync-${PLUGIN}-v${VERSION}"
+          BRANCH="chore/sync-${PLUGIN}-v${VERSION}-${GITHUB_RUN_ID}"
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

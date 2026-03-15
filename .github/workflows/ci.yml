@@ -24,7 +24,7 @@ jobs:
             const m = require('./.claude-plugin/marketplace.json');
             if (!m.name) throw new Error('missing name');
             if (!m.metadata?.version) throw new Error('missing metadata.version');
-            if (!/^\d+\.\d+\.\d+/.test(m.metadata.version)) throw new Error('metadata.version must be semver: ' + m.metadata.version);
+            if (!/^\d+\.\d+\.\d+(-[\w.]+)?(\+[\w.]+)?$/.test(m.metadata.version)) throw new Error('metadata.version must be semver: ' + m.metadata.version);
             if (!m.plugins || !m.plugins.length) throw new Error('no plugins listed');
             for (const p of m.plugins) {
               if (!p.name) throw new Error('plugin missing name');

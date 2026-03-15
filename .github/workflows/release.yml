@@ -27,7 +27,7 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           if [ -z "$VERSION" ] || [ "$VERSION" = "undefined" ] || [ "$VERSION" = "null" ]; then
             echo "should_release=false" >> "$GITHUB_OUTPUT"
-          elif ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then
+          elif ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?(\+[a-zA-Z0-9.]+)?$'; then
             echo "should_release=false" >> "$GITHUB_OUTPUT"
           elif git ls-remote --tags origin "v$VERSION" | grep -q "v$VERSION"; then
             echo "should_release=false" >> "$GITHUB_OUTPUT"
