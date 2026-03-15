@@ -23,7 +23,7 @@ jobs:
       - name: Check if backport is needed
         id: check
         run: |
-          git fetch origin develop
+          git fetch origin develop main
           DIFF=$(git log origin/develop..origin/main --oneline)
           if [ -n "$DIFF" ]; then
             echo "needed=true" >> "$GITHUB_OUTPUT"

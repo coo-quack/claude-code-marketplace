@@ -70,10 +70,10 @@ jobs:
           git commit -m "chore: sync ${PLUGIN} to v${VERSION}"
           git push origin "$BRANCH"
 
-          gh pr create \
+          PR_URL=$(gh pr create \
             --title "chore: sync ${PLUGIN} to v${VERSION}" \
             --body "Automated version sync triggered by [${PLUGIN} v${VERSION}](https://github.com/coo-quack/${PLUGIN}/releases/tag/v${VERSION})." \
             --base develop \
-            --head "$BRANCH"
+            --head "$BRANCH")
 
-          gh pr merge "$BRANCH" --auto --merge || gh pr merge "$BRANCH" --merge
+          gh pr merge "$PR_URL" --auto --merge || gh pr merge "$PR_URL" --merge
