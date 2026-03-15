@@ -61,20 +61,32 @@ jobs:
           node-version: '22'
 
       - name: Create git tag
+        env:
+          VERSION: v${{ needs.check.outputs.version }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          VERSION="v${{ needs.check.outputs.version }}"
-          git tag "$VERSION"
-          git push origin "$VERSION"
+          if git ls-remote --tags --refs origin "refs/tags/$VERSION" | grep -q .; then
+            echo "Tag $VERSION already exists, skipping"
+          else
+            git tag "$VERSION"
+            git push origin "$VERSION"
+          fi
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: v${{ needs.check.outputs.version }}
         run: |
-          VERSION="v${{ needs.check.outputs.version }}"
-          PLUGINS=$(node -p "require('./.claude-plugin/marketplace.json').plugins.map(p => '- **' + p.name + '** v' + p.version).join('\n')")
-          NOTES=$(printf '## Plugins\n\n%s' "$PLUGINS")
-          gh release create "$VERSION" \
-            --title "$VERSION" \
-            --notes "$NOTES"
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            echo "Release $VERSION already exists, skipping"
+          else
+            node -e '
+              const m = require("./.claude-plugin/marketplace.json");
+              const lines = m.plugins.map(p => "- **" + p.name + "** v" + p.version);
+              require("fs").writeFileSync("/tmp/release-notes.md", "## Plugins\n\n" + lines.join("\n") + "\n");
+            '
+            gh release create "$VERSION" \
+              --title "$VERSION" \
+              --notes-file /tmp/release-notes.md
+          fi

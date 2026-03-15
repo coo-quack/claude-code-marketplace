@@ -80,10 +80,10 @@ jobs:
       - name: Create PR
         if: steps.diff.outputs.changed == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          PLUGIN: ${{ steps.update.outputs.plugin }}
+          VERSION: ${{ steps.update.outputs.version }}
         run: |
-          PLUGIN="${{ steps.update.outputs.plugin }}"
-          VERSION="${{ steps.update.outputs.version }}"
           BRANCH="chore/sync-${PLUGIN}-v${VERSION}-${GITHUB_RUN_ID}"
 
           git config user.name "github-actions[bot]"

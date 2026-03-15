@@ -34,8 +34,10 @@ jobs:
       - name: Create backport branch
         if: steps.check.outputs.needed == 'true'
         id: branch
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          BRANCH="backport/pr-${{ github.event.pull_request.number }}-to-develop"
+          BRANCH="backport/pr-${PR_NUMBER}-to-develop"
           git checkout -b "$BRANCH" origin/develop
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -54,11 +56,12 @@ jobs:
       - name: Create backport PR
         if: steps.check.outputs.needed == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          CONFLICT: ${{ steps.branch.outputs.conflict }}
+          BRANCH: ${{ steps.branch.outputs.branch }}
         run: |
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-
-          if [ "${{ steps.branch.outputs.conflict }}" = "true" ]; then
+          if [ "$CONFLICT" = "true" ]; then
             BODY="Automated backport of #${PR_NUMBER} to \`develop\`.\n\n⚠️ **Merge conflict detected.** The branch was created with \`-s ours\` to allow PR creation. You must manually resolve the conflicts before merging."
           else
             BODY="Automated backport of #${PR_NUMBER} to \`develop\`."
@@ -68,8 +71,8 @@ jobs:
             --title "chore: backport #${PR_NUMBER} to develop" \
             --body "$(echo -e "$BODY")" \
             --base develop \
-            --head "${{ steps.branch.outputs.branch }}")
+            --head "$BRANCH")
 
-          if [ "${{ steps.branch.outputs.conflict }}" != "true" ]; then
+          if [ "$CONFLICT" != "true" ]; then
             gh pr merge "$PR_URL" --auto --merge || gh pr merge "$PR_URL" --merge
           fi
