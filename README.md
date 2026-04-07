@@ -21,4 +21,3 @@ claude plugin marketplace add coo-quack/claude-code-marketplace
 claude plugin install sensitive-canary@coo-quack/claude-code-marketplace
 claude plugin install do-not-compact@coo-quack/claude-code-marketplace
 ```
-test
