@@ -15,9 +15,14 @@
         "repo": "coo-quack/sensitive-canary"
       },
       "description": "Blocks secrets and PII before they reach the Anthropic API",
-      "version": "0.4.6",
+      "version": "0.5.2",
       "license": "MIT",
-      "keywords": ["security", "secrets", "pii", "hooks"]
+      "keywords": [
+        "security",
+        "secrets",
+        "pii",
+        "hooks"
+      ]
     },
     {
       "name": "do-not-compact",
@@ -28,7 +33,29 @@
       "description": "Reloads CLAUDE.md files into context after conversation compaction",
       "version": "1.0.0",
       "license": "MIT",
-      "keywords": ["compaction", "claude-md", "context", "hooks"]
+      "keywords": [
+        "compaction",
+        "claude-md",
+        "context",
+        "hooks"
+      ]
+    },
+    {
+      "name": "calc-mcp",
+      "source": {
+        "source": "github",
+        "repo": "coo-quack/calc-mcp"
+      },
+      "description": "MCP server with 21 tools for things AI is bad at — math, hashing, encoding, date arithmetic, and more.",
+      "version": "2.0.1",
+      "license": "MIT",
+      "keywords": [
+        "mcp",
+        "math",
+        "hashing",
+        "encoding",
+        "date"
+      ]
     }
   ]
 }
