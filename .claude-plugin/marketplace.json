@@ -39,6 +39,23 @@
         "context",
         "hooks"
       ]
+    },
+    {
+      "name": "calc-mcp",
+      "source": {
+        "source": "github",
+        "repo": "coo-quack/calc-mcp"
+      },
+      "description": "MCP server with 21 tools for things AI is bad at — math, hashing, encoding, date arithmetic, and more.",
+      "version": "2.0.1",
+      "license": "MIT",
+      "keywords": [
+        "mcp",
+        "math",
+        "hashing",
+        "encoding",
+        "date"
+      ]
     }
   ]
 }
