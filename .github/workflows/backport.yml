@@ -1,78 +1,71 @@
-name: Backport to develop
+name: Sync main to develop
 
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches: [main]
 
 permissions: {}
 
+concurrency:
+  group: sync-main-to-develop
+  cancel-in-progress: false
+
 jobs:
-  backport:
-    if: github.event.pull_request.merged == true
+  sync:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
 
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          # Disable cached GITHUB_TOKEN so we can push with the App token below.
+          persist-credentials: false
 
-      - name: Check if backport is needed
+      - name: Check if sync is needed
         id: check
         run: |
-          git fetch origin develop main
-          DIFF=$(git log origin/develop..origin/main --oneline)
-          if [ -n "$DIFF" ]; then
-            echo "needed=true" >> "$GITHUB_OUTPUT"
+          git fetch origin develop
+          if git merge-base --is-ancestor origin/main origin/develop; then
+            echo "needed=false" >> $GITHUB_OUTPUT
           else
-            echo "needed=false" >> "$GITHUB_OUTPUT"
+            echo "needed=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create backport branch
+      - name: Mint app token
+        if: steps.check.outputs.needed == 'true'
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.BACKPORT_APP_ID }}
+          private-key: ${{ secrets.BACKPORT_APP_PRIVATE_KEY }}
+
+      - name: Prepare sync branch
         if: steps.check.outputs.needed == 'true'
         id: branch
         env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          BRANCH="backport/pr-${PR_NUMBER}-to-develop"
-          git checkout -b "$BRANCH" origin/develop
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          if git merge origin/main --no-edit; then
-            echo "conflict=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "conflict=true" >> "$GITHUB_OUTPUT"
-            git merge --abort
-            git merge origin/main --no-edit -s ours
-          fi
-
+          BRANCH="chore/sync-main-to-develop-${{ github.run_id }}"
+          SLUG="${{ steps.app-token.outputs.app-slug }}"
+          git config user.name "${SLUG}[bot]"
+          git config user.email "${SLUG}[bot]@users.noreply.github.com"
+          # Push via app token so subsequent workflows (CI) fire on the new branch.
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          git checkout -B "$BRANCH" origin/develop
+          git merge origin/main --no-edit
           git push origin "$BRANCH"
-          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
 
-      - name: Create backport PR
+      - name: Open PR and enable auto-merge
         if: steps.check.outputs.needed == 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          CONFLICT: ${{ steps.branch.outputs.conflict }}
-          BRANCH: ${{ steps.branch.outputs.branch }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          if [ "$CONFLICT" = "true" ]; then
-            BODY="Automated backport of #${PR_NUMBER} to \`develop\`.\n\n⚠️ **Merge conflict detected.** The branch was created with \`-s ours\` to allow PR creation. You must manually resolve the conflicts before merging."
-          else
-            BODY="Automated backport of #${PR_NUMBER} to \`develop\`."
-          fi
-
           PR_URL=$(gh pr create \
-            --title "chore: backport #${PR_NUMBER} to develop" \
-            --body "$(echo -e "$BODY")" \
             --base develop \
-            --head "$BRANCH")
-
-          if [ "$CONFLICT" != "true" ]; then
-            gh pr merge "$PR_URL" --auto --merge || gh pr merge "$PR_URL" --merge
-          fi
+            --head "${{ steps.branch.outputs.branch }}" \
+            --title "chore: sync main to develop" \
+            --body "Automated sync of main into develop. Auto-merges once CI passes.")
+          gh pr merge --auto --merge "$PR_URL"
