@@ -20,7 +20,8 @@
         "digest"
       ],
       "automerge": true,
-      "automergeType": "pr"
+      "automergeType": "pr",
+      "minimumReleaseAge": "1 day"
     },
     {
       "description": "Update package managers",
