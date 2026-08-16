@@ -12,7 +12,8 @@
       "name": "sensitive-canary",
       "source": {
         "source": "github",
-        "repo": "coo-quack/sensitive-canary"
+        "repo": "coo-quack/sensitive-canary",
+        "ref": "main"
       },
       "description": "Blocks secrets and PII before they reach the Anthropic API",
       "version": "0.7.0",
@@ -28,7 +29,8 @@
       "name": "do-not-compact",
       "source": {
         "source": "github",
-        "repo": "coo-quack/do-not-compact"
+        "repo": "coo-quack/do-not-compact",
+        "ref": "main"
       },
       "description": "Reloads CLAUDE.md files into context after conversation compaction",
       "version": "1.1.1",
@@ -44,7 +46,8 @@
       "name": "calc-mcp",
       "source": {
         "source": "github",
-        "repo": "coo-quack/calc-mcp"
+        "repo": "coo-quack/calc-mcp",
+        "ref": "main"
       },
       "description": "MCP server with 21 tools for things AI is bad at — math, hashing, encoding, date arithmetic, and more.",
       "version": "2.0.5",
