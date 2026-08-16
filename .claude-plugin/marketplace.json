@@ -16,7 +16,7 @@
         "ref": "main"
       },
       "description": "Blocks secrets and PII before they reach the Anthropic API",
-      "version": "0.7.0",
+      "version": "0.8.0",
       "license": "MIT",
       "keywords": [
         "security",
