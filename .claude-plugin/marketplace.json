@@ -16,7 +16,7 @@
         "ref": "main"
       },
       "description": "Blocks secrets and PII before they reach the Anthropic API",
-      "version": "0.8.1",
+      "version": "0.8.2",
       "license": "MIT",
       "keywords": [
         "security",
@@ -33,7 +33,7 @@
         "ref": "main"
       },
       "description": "Reloads CLAUDE.md files into context after conversation compaction",
-      "version": "1.1.2",
+      "version": "1.1.3",
       "license": "MIT",
       "keywords": [
         "compaction",
@@ -50,7 +50,7 @@
         "ref": "main"
       },
       "description": "MCP server with 21 tools for things AI is bad at — math, hashing, encoding, date arithmetic, and more.",
-      "version": "2.1.1",
+      "version": "2.1.2",
       "license": "MIT",
       "keywords": [
         "mcp",
